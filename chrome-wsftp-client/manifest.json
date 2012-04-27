@@ -1,0 +1,14 @@
+{
+  "name": "WS-FTP Client",
+  "description": "Connects to the ws-ftp webserver via socket.io",
+  "version": "1",
+  "app": {
+    "launch": {
+      "local_path": "main.html"
+    }
+  },
+  "permissions": [
+	  "<all_urls>",
+	  "unlimitedStorage"
+	]
+}

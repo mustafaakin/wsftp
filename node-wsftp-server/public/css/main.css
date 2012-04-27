@@ -1,0 +1,12 @@
+b#main-title{
+	background:url('../img/icon/library-big.png');
+}
+div.container-small{	
+	width: 500px;
+}
+body {
+	padding-top: 60px;
+}
+.btn {
+	margin-right: 5px;
+}
