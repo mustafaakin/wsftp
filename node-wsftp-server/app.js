@@ -14,12 +14,18 @@ var walk    = require('walk');
 var PACKET_SIZE = 8 * 1024; // 4 KB
 
 function getContents(path, callback){
+    if ( path.lastIndexOf("/") == path.length - 1) // Trimming file last / in path
+        path = path.substr(0, path.length-1);
+
     fs.readdir(path, function(err,files){
         var meta_files = [];
         for ( var i = 0; i < files.length; i++){
+            if ( files[i].indexOf(".") == 0) continue;
             var stats = fs.statSync(path + "/" + files[i]);
+            var fileType = stats.isFile() ? "file" : stats.isDirectory() ? "directory" : "unknown";
+            if ( fileType == "unknown") continue;
             meta_files.push({ 
-                type: stats.isFile() ? "file" : stats.isDirectory() ? "directory" : "unknown",
+                type: fileType,
                 name: path + "/" + files[i],
                 length: stats.size
             }); 
@@ -28,8 +34,8 @@ function getContents(path, callback){
             if ( a.type == b.type)
                 return 0;
             if ( a.type == "directory" && b.type == "file")
-                return 1;
-            return -1;
+                return -1;
+            return 1;
         });
         callback(meta_files);        
     });
@@ -59,9 +65,8 @@ app.listen(3000);
 var sio = io.listen(app);
 
 sio.set('log level', 0);
-sio.sockets.on('connection', function (socket) {
-    socket.emit("hello", "naber");
 
+sio.sockets.on('connection', function (socket) {
     socket.on("files", function(msg){
         console.log(msg);
         var path = msg.path;
@@ -74,7 +79,6 @@ sio.sockets.on('connection', function (socket) {
         getFile(msg.path, msg.offset, socket);
     });
 });
-
 
 var fds = new Array();
 function getFD(path, callback){
@@ -90,9 +94,7 @@ function getFD(path, callback){
 
 function getFile(path, offset, socket){
     getFD(path, function(fd){
-        // console.log(fd);
         var size = fs.statSync(path).size;
-        // console.log(path + " => " + offset + "/" + size);
         var buffer = new Buffer(PACKET_SIZE);
         fs.read(fd, buffer, 0, PACKET_SIZE , offset, function(err, num) {
             if ( err){

@@ -6,26 +6,59 @@ $(document).ready(function(){
 	var filename; 
 	var startTime; 
 	var blockSize =  8 * 1024;
+	var prevPaths = [];
+	var currentPath = "";
 
 	function showMessage(msg){
 		$("#console").append("<br/>" + msg);
 	}
 	
+	function navigatePath(place){
+		socket.emit('files', {path:place});
+		if ( currentPath != ""){
+			prevPaths.push(currentPath);
+		}
+		currentPath = place;
+		// showMessage("Previous paths: " + JSON.stringify(prevPaths));
+	}
+
+	function navigateBack(){
+		var hist = prevPaths.pop();
+		if ( hist){
+			currentPath = hist;
+			socket.emit('files', {path:hist});
+		}
+		// showMessage("Previous paths: " + JSON.stringify(prevPaths));
+	}
+
+	$("#backButton").click(function(){
+		navigateBack();
+	});
+
 	$("#btn-getfiles").click( function(){
 		var place = $("#SRV_PLACE").val();
-		socket.emit('files', {path:place});
+		navigatePath(place);
 	});
 	
 	var queue = [];
 	$(".btn-download").live("click", function(){
-		var fname = $(this).text();
+		var type = $(this).data("type");
+		var fname = $(this).data("fname");
 		var size = $(this).data("length");
+
+		if ( type == "directory"){
+			navigatePath(fname);
+			return;
+		}
+
 		startTime = new Date();
 
 		for ( var i = 0; i < size; i = i + blockSize) {
 			toDownload++;
 			queue.push({path:fname, offset: i});			
 		}
+		$("#downloadProgress").attr("max", toDownload);
+		$("#downloadProgress").val(0);
 		var task = queue.pop();
 		console.log(task);
 		socket.emit("getfile", task);
@@ -37,12 +70,24 @@ $(document).ready(function(){
 		var port = $("#SRV_PORT").val();
 		socket = io.connect("http://" + ip + ":" + port);
 		showMessage("Connected to " + ip);
+
 		socket.on('server_file_list', function (data){
-			var gui = "<ul>";
+			var gui = "";
 			for ( var i = 0; i < data.length; i++){
-				gui += "<li><a class='btn btn-download' data-length='" + data[i].length + "'>" + data[i].name + "</a></li>";
+				// gui += "<li><a class='btn btn-download' data-length='" + data[i].length + "'>" + data[i].name + "</a></li>";
+				var fileName = data[i].name.split("/");
+				fileName = fileName[fileName.length - 1];
+				gui += "<tr class='btn-download' data-fname='"+ data[i].name +"' + data-length='"+ data[i].length +"' data-type='" + 
+					data[i].type + "'><td>";
+				if ( data[i].type == "file"){
+					gui += "<i class='icon icon-download'></i> " 
+				} else {
+					gui += "<i class='icon icon-folder-open'></i> " 					
+				}
+				gui += fileName + "</td>";
+				gui += "<td>" + (data[i].type == "directory" ? "" : (Math.ceil(data[i].length / 1024) + " KB")) + "</td></tr>";
 			}
-			$("#filelist").html(gui + "</ul>");
+			$("#fileList").html(gui);
 		});
 
 		socket.on('filecontent', function (data) {
@@ -63,6 +108,8 @@ $(document).ready(function(){
 	   		var a = data.filename.split("/");	   		
 	   		filename = a[a.length - 1];
 	   		toDownload--;
+	   		var soFar = $("#downloadProgress").val();
+	   		$("#downloadProgress").val(soFar + 1);
 	   		// showMessage("Remaining downloads: " + toDownload);
 	   		if ( toDownload == 0){
 	   			var sampled = new WebKitBlobBuilder();

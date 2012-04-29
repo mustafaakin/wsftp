@@ -10,3 +10,18 @@ body {
 .btn {
 	margin-right: 5px;
 }
+#downloadProgress {
+	width: 100%;
+}
+.btn-download:hover {
+	cursor: pointer;
+}
+#fileTable {
+	width: 90%;
+}
+#col1 {
+	width: 70%;
+}
+#col2 {
+	width: 30%;
+}
